@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use macroquad::color::{Color, DARKGRAY, WHITE};
@@ -7,6 +6,7 @@ use macroquad::text::draw_text;
 use crate::{QuadObject, Rectangle};
 
 const MAX_OBJECTS_PER_NODE: usize = 4;
+const MAX_LEAF_DEPTH: i32 = 10;
 const LINE_WIDTH: f32 = 1.0;
 
 const QUAD_LINES_COLOR: Color = WHITE;
@@ -37,52 +37,33 @@ fn assign_object_to_grid(surface: &TreeSurface, object: &Rc<dyn QuadObject>) -> 
 // QuadTree
 // --------------------
 pub struct QuadTree {
-    top_left: Box<TreeNode>,
-    top_right: Box<TreeNode>,
-    bottom_left: Box<TreeNode>,
-    bottom_right: Box<TreeNode>,
+    top_node: Box<TreeNode>,
 
     surface: TreeSurface,
 }
 
 impl Display for QuadTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Quadtree:\n1{}\n2{}\n3{}\n4{}\n", self.top_left, self.top_right, self.bottom_left, self.bottom_right)
+        write!(f, "Quadtree: {}", self.top_node)
     }
 }
 impl QuadTree {
     pub fn new(x0: i32, y0: i32, width: i32, height: i32) -> QuadTree {
         let surface = TreeSurface { x0, y0, x1:(x0+width), y1:(y0+height) };
-        let (mx, my) = surface.mxy();
 
         QuadTree {
-            top_left: Box::new(TreeNode::new(1,surface.x0, surface.y0, mx - 1, my - 1)),
-            top_right: Box::new(TreeNode::new(1, mx, surface.y0, surface.x1, my - 1)),
-            bottom_left: Box::new(TreeNode::new(1, surface.x0, my, mx - 1, surface.y1)),
-            bottom_right: Box::new(TreeNode::new(1, mx, my, surface.x1, surface.y1)),
+            top_node: Box::new(TreeNode::new(1, surface.x0, surface.y0, surface.x1, surface.y1)),
             surface,
         }
     }
 
     pub fn clear(&mut self) {
-        self.top_left.clear();
-        self.top_right.clear();
-        self.bottom_left.clear();
-        self.bottom_right.clear();
-
-        let (mx, my) = self.surface.mxy();
-        self.top_left = Box::new(TreeNode::new(1, self.surface.x0, self.surface.y0, mx - 1, my - 1));
-        self.top_right = Box::new(TreeNode::new(1, mx, self.surface.y0, self.surface.x1, my - 1));
-        self.bottom_left = Box::new(TreeNode::new(1, self.surface.x0, my, mx, self.surface.y1));
-        self.bottom_right = Box::new(TreeNode::new(1, mx, my, self.surface.x1, self.surface.y1));
+        self.top_node.clear();
+        self.top_node = Box::new(TreeNode::new(1, self.surface.x0, self.surface.y0, self.surface.x1, self.surface.y1));
     }
 
     pub fn insert_object(&mut self, object: Rc<dyn QuadObject>) {
-        let grid_index = assign_object_to_grid(&self.surface, &object);
-        if grid_index.iter().find(|&&x|x==0).is_some() { self.top_left.insert_object(Rc::clone(&object)) }
-        if grid_index.iter().find(|&&x|x==1).is_some() { self.top_right.insert_object(Rc::clone(&object)) }
-        if grid_index.iter().find(|&&x|x==2).is_some() { self.bottom_left.insert_object(Rc::clone(&object)) }
-        if grid_index.iter().find(|&&x|x==3).is_some() { self.bottom_right.insert_object(Rc::clone(&object)) }
+        self.top_node.insert_object(Rc::clone(&object));
     }
 }
 
@@ -148,30 +129,41 @@ impl TreeNode {
     }
 
     pub fn clear(&mut self) {
-        if !self.objects.is_none() { // Check if objectvector is not None
+        if self.objects.is_some() { // Check if objectvector is not None
             self.objects.as_mut().unwrap().clear();
-        } else {
-            self.leaves.iter_mut().for_each(|leaf| {
-                let leaf: &mut Box<TreeNode> = leaf.as_mut().unwrap();
-                leaf.clear();
-            });
-            for i in 1..3 {
-                self.leaves[i] = None;
-            }
+            return;
+        }
+        self.leaves.iter_mut().for_each(|leaf| {
+            let leaf: &mut Box<TreeNode> = leaf.as_mut().unwrap();
+            leaf.clear();
+        });
+        for i in 1..3 {
+            self.leaves[i] = None;
         }
     }
 
     pub fn insert_object(&mut self, object: Rc<dyn QuadObject>) {
-        if !self.objects.is_none() { // Check if objectvector is not None
+        if self.objects.is_some() { // Check if objectvector is Some
 
-            // Check if max has been reached, if so then move objects to
+            // First check if max object count has been reached
             if self.objects.as_ref().unwrap().len() == MAX_OBJECTS_PER_NODE {
-                self.switch_object_to_leaves(object);
-                return;
+
+                // Check if the current size is even valid
+                let valid_to_split = (self.surface.x0 - self.surface.x1).abs() > 2 && (self.surface.y0 - self.surface.y1).abs() > 2;
+                // Check if max depth has been reached
+                let under_max_depth = self.depth < MAX_LEAF_DEPTH;
+
+                // If neither guards have been activated
+                if valid_to_split && under_max_depth {
+                    self.switch_object_to_leaves(object);
+                    return;
+                }
             }
 
             // Else push object
             self.objects.as_mut().unwrap().push(object);
+
+
         } else { // We are using the leaves:
             let grid_index = assign_object_to_grid(&self.surface, &object);
 
@@ -232,22 +224,15 @@ impl TreeNode {
 // ----------------------------------------
 impl QuadTree {
     pub fn node_count(&self) -> i32 {
-        self.top_left.node_count() +
-        self.top_right.node_count() +
-        self.bottom_left.node_count() +
-        self.bottom_right.node_count()
+        self.top_node.node_count()
     }
 
     pub fn deepest_node(&self) -> i32 {
-        max(max(self.top_left.deepest_node(), self.top_right.deepest_node()),
-        max(self.bottom_left.deepest_node(), self.bottom_right.deepest_node()))
+        self.top_node.deepest_node()
     }
 
     pub fn object_count(&self) -> i32 {
-        self.top_left.object_count() +
-            self.top_right.object_count() +
-            self.bottom_left.object_count() +
-            self.bottom_right.object_count()
+        self.top_node.object_count()
     }
 }
 
@@ -286,6 +271,28 @@ impl TreeNode {
             }).sum()
         }
     }
+
+    pub fn leaf_count(&self) -> i32 {
+        if self.objects.is_some() { // Check if objectvector is not None
+            0
+        } else {
+            self.leaves.iter().map(|leaf| {
+                let node_count = leaf.as_ref().unwrap().leaf_count();
+                node_count
+            }).sum::<i32>() + 4
+        }
+    }
+
+    pub fn max_objects(&self) -> i32 {
+        if self.objects.is_some() { // Check if objectvector is not None
+            self.object_count()
+        } else {
+            self.leaves.iter().map(|leaf| {
+                let max_object_count = leaf.as_ref().unwrap().max_objects();
+                max_object_count
+            }).max().unwrap()
+        }
+    }
 }
 
 // ----------------------------------------
@@ -293,20 +300,7 @@ impl TreeNode {
 // ----------------------------------------
 impl QuadTree {
     pub fn query_objects_in(&self, query_surface: &Rectangle) -> Vec<Rc<dyn QuadObject>> {
-        let mut query_result = vec![];
-        if query_surface.is_overlap(&self.top_left.surface) {
-            query_result.append(self.top_left.query_surface(query_surface).as_mut());
-        }
-        if query_surface.is_overlap(&self.top_right.surface) {
-            query_result.append(self.top_right.query_surface(query_surface).as_mut());
-        }
-        if query_surface.is_overlap(&self.bottom_left.surface) {
-            query_result.append(self.bottom_left.query_surface(query_surface).as_mut());
-        }
-        if query_surface.is_overlap(&self.bottom_right.surface) {
-            query_result.append(self.bottom_right.query_surface(query_surface).as_mut());
-        }
-        query_result
+        self.top_node.query_surface(query_surface)
     }
 }
 impl TreeNode {
@@ -338,19 +332,35 @@ impl QuadTree {
         draw_line(self.surface.x1 as f32, self.surface.y0 as f32, self.surface.x1 as f32, self.surface.y1 as f32, LINE_WIDTH, DARKGRAY);
 
         // Children
-        self.top_left.draw();
-        self.top_right.draw();
-        self.bottom_left.draw();
-        self.bottom_right.draw();
+        self.top_node.draw();
 
         // Text
+        let draw_x = self.surface.x1 as f32 + 5.0;
+
         let mut info_str = String::from("Node count:");
         info_str.push_str(&self.node_count().to_string());
-        info_str.push_str(" Deepest node:");
+        draw_text(info_str.as_str(), draw_x, 40.0, 15.0, WHITE);
+        info_str.clear();
+
+        info_str.push_str("Deepest node:");
         info_str.push_str(&self.deepest_node().to_string());
-        info_str.push_str(" Object count:");
+        draw_text(info_str.as_str(), draw_x, 60.0, 15.0, WHITE);
+        info_str.clear();
+
+        info_str.push_str("Objects in nodes:");
         info_str.push_str(&self.object_count().to_string());
-        draw_text(info_str.as_str(), 25.0, 20.0, 15.0, WHITE);
+        draw_text(info_str.as_str(), draw_x, 80.0, 15.0, WHITE);
+        info_str.clear();
+
+        info_str.push_str("Allocated leafs:");
+        info_str.push_str(&self.top_node.leaf_count().to_string());
+        draw_text(info_str.as_str(), draw_x, 100.0, 15.0, WHITE);
+        info_str.clear();
+
+        info_str.push_str("Max objects in leaf:");
+        info_str.push_str(&self.top_node.max_objects().to_string());
+        draw_text(info_str.as_str(), draw_x, 120.0, 15.0, WHITE);
+        info_str.clear();
     }
 }
 

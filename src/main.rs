@@ -17,7 +17,7 @@ mod quad_objects;
 fn window_conf() -> Conf {
     Conf {
         window_title: "QuadTree".to_owned(),
-        window_width: 550,
+        window_width: 750,
         window_height: 550,
         ..Default::default()
     }
@@ -137,7 +137,7 @@ fn draw(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>
             // Text
             let mut info_str = String::from("Node count:");
             info_str.push_str(&objects.len().to_string());
-            draw_text(info_str.as_str(), 25.0, 10.0, 15.0, YELLOW);
+            draw_text(info_str.as_str(), 25.0, 20.0, 15.0, YELLOW);
 
             // Objects
             for object in objects {
@@ -149,7 +149,7 @@ fn draw(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>
     let mut info_str = String::from("Object vect: ");
     let len = &object_array.len().to_string();
     info_str.push_str(len);
-    draw_text(info_str.as_str(), 120.0, 10.0, 15.0, WHITE);
+    draw_text(info_str.as_str(), 120.0, 20.0, 15.0, WHITE);
 }
 
 // --------------------
