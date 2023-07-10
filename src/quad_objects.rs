@@ -2,6 +2,7 @@ use std::any::{Any, TypeId};
 use std::cmp::{max, min};
 use std::fmt;
 use std::fmt::{Display, Formatter, Pointer};
+use std::mem::swap;
 use std::ops::Deref;
 use std::rc::Rc;
 use macroquad::color::{DARKBLUE, RED, YELLOW};
@@ -77,17 +78,28 @@ impl Display for Boid {
 
 // Rectangle
 pub struct Rectangle {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
 }
 impl Rectangle {
     pub fn new(x: i32, y: i32, width: i32, height: i32) -> Rectangle {
-        Rectangle { x, y, width, height }
+
+        let mut x0 = x;
+        let mut x1 = x + width;
+        let mut y0 = y;
+        let mut y1 = y + height;
+        if width < 0 {
+            swap(&mut x0, &mut x1);
+        }
+        if height < 0 {
+            swap(&mut y0, &mut y1);
+        }
+        Rectangle { x0, y0, x1, y1, }
     }
     pub fn to_tree_surface(&self) -> TreeSurface {
-        TreeSurface { x0:self.x, x1:self.x+self.width, y0:self.y, y1:self.y+self.height }
+        TreeSurface { x0:self.x0, y0:self.y0, x1:self.x1, y1:self.y1 }
     }
 
     pub fn is_rect_overlap(&self, object: &Rc<dyn QuadObject>) -> bool {
@@ -95,34 +107,45 @@ impl Rectangle {
         object.is_overlap(&surface)
     }
     pub fn get_wh(&self) -> (i32, i32) {
-        (self.width, self.height)
-    }
-    pub fn set_width(&mut self, width: i32) {
-        self.width = width;
-    }
-    pub fn set_height(&mut self, height: i32) {
-        self.height = height;
+        (self.x1 - self.x0, self.y1 - self.y0)
     }
     pub fn get_source(&self) -> (i32, i32) {
-        (self.x, self.y)
+        (self.x0, self.y0)
+    }
+    pub fn adjust_to_point(&mut self, x: i32, y:i32) {
+        self.x1 = x;
+        self.y1 = y;
+    }
+    pub fn normalize(&mut self) {
+        if self.x1 < self.x0 {
+            swap(&mut self.x0, &mut self.x1);
+        }
+        if self.y1 < self.y0 {
+            swap(&mut self.y0, &mut self.y1);
+        }
     }
 }
 impl QuadObject for Rectangle {
     fn draw(&self) {
-        draw_rectangle_lines(self.x as f32, self.y as f32, self.width as f32, self.height as f32, 1.0, RED);
+        let (w, h) = self.get_wh();
+        draw_rectangle_lines(self.x0 as f32, self.y0 as f32, w as f32, h as f32, 1.0, RED);
     }
 
     fn highlight(&self) {
-        draw_rectangle_lines(self.x as f32, self.y as f32, self.width as f32, self.height as f32, 1.0, YELLOW);
+        let (w, h) = self.get_wh();
+        draw_rectangle_lines(self.x0 as f32, self.y0 as f32, w as f32, h as f32, 1.0, YELLOW);
     }
 
-    fn center(&self) -> (i32, i32) { (((self.width) / 2) + self.x, ((self.height) / 2) + self.y) }
+    fn center(&self) -> (i32, i32) {
+        let (w, h) = self.get_wh();
+        ((w / 2) + self.x0, (h / 2) + self.y0)
+    }
 
     fn is_overlap(&self, surface: &TreeSurface) -> bool {
-        if self.x < surface.x1 &&
-            self.x + self.width > surface.x0 &&
-            self.y < surface.y1 &&
-            self.y + self.height > surface.y0 {
+        if self.x0 < surface.x1 &&
+            self.x1 > surface.x0 &&
+            self.y0 < surface.y1 &&
+            self.y1 > surface.y0 {
             true
         } else {
             false
@@ -131,7 +154,7 @@ impl QuadObject for Rectangle {
 }
 impl Display for Rectangle {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "RECT")
+        write!(f, "RECT: ({}, {}) -> ({}, {})", self.x0, self.y0, self.x1, self.y1)
     }
 }
 // Circle

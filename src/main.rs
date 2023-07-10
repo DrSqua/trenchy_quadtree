@@ -4,7 +4,7 @@ use macroquad::color::{BLACK, WHITE, YELLOW};
 use macroquad::input::{is_key_down, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_delta_position, mouse_position, MouseButton};
 use macroquad::prelude::{BLUE, Conf, KeyCode, rand};
 use macroquad::text::draw_text;
-use macroquad::window::{clear_background, next_frame};
+use macroquad::window::{clear_background, next_frame, screen_height};
 use crate::quad_objects::{QuadObject, Rectangle, Circle, Boid};
 use crate::quadtree::QuadTree;
 
@@ -63,21 +63,25 @@ struct InputStore {
 // Handle Input
 // --------------------
 fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>, quadtree: &QuadTree) {
+    // Add object
     if is_mouse_button_pressed(MouseButton::Right) {
         let (mx, my) = mouse_position();
         object_array.push(Rc::new(Boid::new(mx as i32, my as i32, 2.0)));
     }
 
+    // Object Query
     if is_mouse_button_down(MouseButton::Left) && input_store.is_selection {
         let mut rect = input_store.selected.as_mut().unwrap();
-        let (x, y) = rect.get_source();
         let (mx, my) = mouse_position();
-        rect.set_width(mx as i32 - x);
-        rect.set_height(my as i32 - y);
+        rect.adjust_to_point(mx as i32, my as i32);
     }
     if is_mouse_button_released(MouseButton::Left) && input_store.is_selection {
         // Do selection
         input_store.is_selection = false;
+
+        let mut rect = input_store.selected.as_mut().unwrap();
+        rect.normalize();
+
         let query = quadtree.query_objects_in(input_store.selected.as_ref().unwrap());
         input_store.selected_objects = Some(query);
     }
