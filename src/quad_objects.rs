@@ -1,16 +1,13 @@
-use std::any::{Any, TypeId};
 use std::cmp::{max, min};
 use std::f32::consts::PI;
 use std::fmt;
-use std::fmt::{Display, Formatter, Pointer};
+use std::fmt::{Display, Formatter};
 use std::mem::swap;
-use std::ops::Deref;
 use std::rc::Rc;
-use macroquad::color::{BLUE, DARKBLUE, RED, WHITE, YELLOW};
+use macroquad::color::{BLUE, DARKBLUE, RED, YELLOW};
 use macroquad::math::Vec2;
 use macroquad::prelude::draw_circle_lines;
-use macroquad::shapes::{draw_line, draw_rectangle_lines, draw_triangle, draw_triangle_lines};
-use crate::KeyCode::V;
+use macroquad::shapes::{draw_line, draw_rectangle_lines, draw_triangle_lines};
 
 use crate::quadtree::TreeSurface;
 

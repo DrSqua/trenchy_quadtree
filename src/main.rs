@@ -1,10 +1,10 @@
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{BorrowMut};
 use std::rc::Rc;
 use macroquad::color::{BLACK, WHITE, YELLOW};
-use macroquad::input::{is_key_down, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_delta_position, mouse_position, MouseButton};
-use macroquad::prelude::{BLUE, Conf, KeyCode};
+use macroquad::input::{is_key_down, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, MouseButton};
+use macroquad::prelude::{Conf, KeyCode};
 use macroquad::text::draw_text;
-use macroquad::window::{clear_background, next_frame, screen_height};
+use macroquad::window::{clear_background, next_frame};
 use crate::quad_objects::{QuadObject, Rectangle, Circle, Boid};
 use crate::quadtree::QuadTree;
 
@@ -45,7 +45,7 @@ fn setup_shapes() -> Vec<Rc<dyn QuadObject>> {
     // Boids
     input_vec.push(Rc::new(Boid::new(200, 200, 2.0)));
 
-    let mut nums: Vec<i32> = (1..40).collect();
+    let nums: Vec<i32> = (1..40).collect();
     let pos_iter = nums.iter().zip( nums.iter().rev() );
     for (x, y) in pos_iter {
         input_vec.push(Rc::new(Boid::new(*x * 10 + 100, *y * 10 + 100, 0.0)));
@@ -64,18 +64,18 @@ struct InputStore {
 // --------------------
 // Handle Input
 // --------------------
-fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>, quadtree: &QuadTree) {
+fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>) {
     // Add object
     if is_mouse_button_pressed(MouseButton::Right) {
         let mut rng = thread_rng();
 
         let (mx, my) = mouse_position();
-        object_array.push(Rc::new(Boid::new(mx as i32, my as i32, rng.gen_range((0.0..6.0)) as f32)));
+        object_array.push(Rc::new(Boid::new(mx as i32, my as i32, rng.gen_range(0.0..6.0) as f32)));
     }
 
     // Object Query
     if is_mouse_button_down(MouseButton::Left) && input_store.is_selection {
-        let mut rect = input_store.selected.as_mut().unwrap();
+        let rect = input_store.selected.as_mut().unwrap();
         let (mx, my) = mouse_position();
         rect.adjust_to_point(mx as i32, my as i32);
     }
@@ -83,7 +83,7 @@ fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn Quad
         // Do selection
         input_store.is_selection = false;
 
-        let mut rect = input_store.selected.as_mut().unwrap();
+        let rect = input_store.selected.as_mut().unwrap();
         rect.normalize();
     }
     if is_mouse_button_pressed(MouseButton::Left) && !input_store.is_selection {
@@ -107,7 +107,7 @@ fn update(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject
 
     // Perform query
     match &input_store.selected {
-        Some(rect) => {
+        Some(_) => {
             let query = quadtree.query_objects_in(input_store.selected.as_ref().unwrap());
             input_store.selected_objects = Some(query);
         },
@@ -168,7 +168,7 @@ async fn main() {
     // Loop
     while run_simulation {
         // Handle_Input
-        handle_input(input_control, object_array, &quadtree);
+        handle_input(input_control, object_array);
         if is_key_down(KeyCode::Escape) { run_simulation = false }
 
         // Update

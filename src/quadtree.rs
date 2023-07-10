@@ -2,7 +2,6 @@ use std::cmp::max;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use macroquad::color::{Color, DARKGRAY, WHITE};
-use macroquad::miniquad::date::now;
 use macroquad::shapes::draw_line;
 use macroquad::text::draw_text;
 use crate::{QuadObject, Rectangle};
@@ -254,13 +253,15 @@ impl QuadTree {
 
 impl TreeNode {
     pub fn node_count(&self) -> i32 {
-        if !self.objects.is_none() { // Check if objectvector is not None
-            0
+        return if !self.objects.is_none() { // Check if objectvector is not None
+            1
         } else {
+            let sum =
             self.leaves.iter().map(|leaf| {
-                let node_count = leaf.as_ref().unwrap().deepest_node();
-                node_count
-            }).sum()
+                let node_count = leaf.as_ref().unwrap().node_count();
+                return node_count
+            }).sum::<i32>();
+            sum + 1
         }
     }
 
@@ -356,10 +357,10 @@ impl QuadTree {
 impl TreeNode {
     pub fn draw(&self) {
         // Borders
-        draw_line(self.surface.x0 as f32, self.surface.y0 as f32, self.surface.x1 as f32, self.surface.y0 as f32, LINE_WIDTH, WHITE);
-        draw_line(self.surface.x0 as f32, self.surface.y1 as f32, self.surface.x1 as f32, self.surface.y1 as f32, LINE_WIDTH, WHITE);
-        draw_line(self.surface.x0 as f32, self.surface.y0 as f32, self.surface.x0 as f32, self.surface.y1 as f32, LINE_WIDTH, WHITE);
-        draw_line(self.surface.x1 as f32, self.surface.y0 as f32, self.surface.x1 as f32, self.surface.y1 as f32, LINE_WIDTH, WHITE);
+        draw_line(self.surface.x0 as f32, self.surface.y0 as f32, self.surface.x1 as f32, self.surface.y0 as f32, LINE_WIDTH, QUAD_LINES_COLOR);
+        draw_line(self.surface.x0 as f32, self.surface.y1 as f32, self.surface.x1 as f32, self.surface.y1 as f32, LINE_WIDTH, QUAD_LINES_COLOR);
+        draw_line(self.surface.x0 as f32, self.surface.y0 as f32, self.surface.x0 as f32, self.surface.y1 as f32, LINE_WIDTH, QUAD_LINES_COLOR);
+        draw_line(self.surface.x1 as f32, self.surface.y0 as f32, self.surface.x1 as f32, self.surface.y1 as f32, LINE_WIDTH, QUAD_LINES_COLOR);
 
         // Children
         if self.objects.is_none() {
