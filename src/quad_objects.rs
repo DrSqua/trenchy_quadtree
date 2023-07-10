@@ -1,14 +1,15 @@
 use std::any::{Any, TypeId};
 use std::cmp::{max, min};
+use std::f32::consts::PI;
 use std::fmt;
 use std::fmt::{Display, Formatter, Pointer};
 use std::mem::swap;
 use std::ops::Deref;
 use std::rc::Rc;
-use macroquad::color::{DARKBLUE, RED, YELLOW};
+use macroquad::color::{BLUE, DARKBLUE, RED, WHITE, YELLOW};
 use macroquad::math::Vec2;
 use macroquad::prelude::draw_circle_lines;
-use macroquad::shapes::{draw_rectangle_lines, draw_triangle, draw_triangle_lines};
+use macroquad::shapes::{draw_line, draw_rectangle_lines, draw_triangle, draw_triangle_lines};
 use crate::KeyCode::V;
 
 use crate::quadtree::TreeSurface;
@@ -21,6 +22,7 @@ pub trait QuadObject: Display {
     fn highlight(&self);
     fn center(&self) -> (i32, i32);
     fn is_overlap(&self, surface: &TreeSurface) -> bool;
+    fn update(&mut self);
 }
 
 // -
@@ -32,32 +34,41 @@ pub struct Boid {
     x: i32,
     y: i32,
     facing: f32,
+    velocity: f32,
 }
 
 impl Boid {
     pub fn new(x: i32, y: i32, facing: f32) -> Boid {
-        Boid { x, y, facing }
+        Boid { x, y, facing, velocity:1.0, }
     }
 }
-impl QuadObject for Boid {
-    fn draw(&self) {
-        // TODO let source = Vec2 { x:(self.x as f32 + sin(self.facing)), y:(self.y as f32 + self.facing)};
-        let p1 = Vec2 { x:(self.x as f32), y:(self.y as f32 - 4.0)};
-        let p2 = Vec2 { x:(self.x as f32 + 4.0), y:(self.y as f32 + 4.0)};
-        let p3 = Vec2 { x:(self.x as f32 - 4.0), y:(self.y as f32 + 4.0)};
 
-        // draw_triangle(source, p1, p2, DARKBLUE);
-        draw_triangle_lines(p1, p2, p3, 2.0, DARKBLUE)
+impl QuadObject for Boid {
+    fn update(&mut self) {
+        let (vx, vy) = (self.x as f32 + self.facing.sin(), self.y as f32 + self.facing.cos());
+        self.x += vx as i32;
+        self.y += vy as i32;
+    }
+
+    fn draw(&self) {
+        let size: f32 = 4.0;
+
+        let on_circle = Vec2   { x:(self.x as f32 + ( self.facing.sin() * 2.0*size)),     y:(self.y as f32 + (self.facing.cos() * 2.0*size))};
+        let left_point = Vec2  { x:(self.x as f32 + ((self.facing + PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing + PI/2.0).cos() * size))};
+        let right_point = Vec2 { x:(self.x as f32 + ((self.facing - PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing - PI/2.0).cos() * size))};
+
+        draw_line(self.x as f32, self.y as f32, on_circle.x, on_circle.y, 1.0, BLUE);
+        draw_triangle_lines(on_circle, left_point, right_point, 1.5, DARKBLUE);
     }
 
     fn highlight(&self) {
-        // TODO let source = Vec2 { x:(self.x as f32 + sin(self.facing)), y:(self.y as f32 + self.facing)};
-        let p1 = Vec2 { x:(self.x as f32), y:(self.y as f32 - 4.0)};
-        let p2 = Vec2 { x:(self.x as f32 + 4.0), y:(self.y as f32 + 4.0)};
-        let p3 = Vec2 { x:(self.x as f32 - 4.0), y:(self.y as f32 + 4.0)};
+        let size: f32 = 4.0;
 
-        // draw_triangle(source, p1, p2, DARKBLUE);
-        draw_triangle_lines(p1, p2, p3, 2.0, YELLOW)
+        let on_circle = Vec2   { x:(self.x as f32 + ( self.facing.sin() * 2.0*size)),     y:(self.y as f32 + (self.facing.cos() * 2.0*size))};
+        let left_point = Vec2  { x:(self.x as f32 + ((self.facing + PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing + PI/2.0).cos() * size))};
+        let right_point = Vec2 { x:(self.x as f32 + ((self.facing - PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing - PI/2.0).cos() * size))};
+
+        draw_triangle_lines(on_circle, left_point, right_point, 1.5, YELLOW);
     }
 
     fn center(&self) -> (i32, i32) {
@@ -126,6 +137,8 @@ impl Rectangle {
     }
 }
 impl QuadObject for Rectangle {
+    fn update(&mut self) {}
+
     fn draw(&self) {
         let (w, h) = self.get_wh();
         draw_rectangle_lines(self.x0 as f32, self.y0 as f32, w as f32, h as f32, 1.0, RED);
@@ -169,6 +182,8 @@ impl Circle {
     }
 }
 impl QuadObject for Circle {
+    fn update(&mut self) {}
+
     fn draw(&self) {
         draw_circle_lines(self.x as f32, self.y as f32, self.radius as f32, 1.0, RED);
     }

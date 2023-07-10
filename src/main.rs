@@ -2,11 +2,13 @@ use std::borrow::{Borrow, BorrowMut};
 use std::rc::Rc;
 use macroquad::color::{BLACK, WHITE, YELLOW};
 use macroquad::input::{is_key_down, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_delta_position, mouse_position, MouseButton};
-use macroquad::prelude::{BLUE, Conf, KeyCode, rand};
+use macroquad::prelude::{BLUE, Conf, KeyCode};
 use macroquad::text::draw_text;
 use macroquad::window::{clear_background, next_frame, screen_height};
 use crate::quad_objects::{QuadObject, Rectangle, Circle, Boid};
 use crate::quadtree::QuadTree;
+
+use rand::{Rng, thread_rng};
 
 mod quadtree;
 mod quad_objects;
@@ -65,8 +67,10 @@ struct InputStore {
 fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>, quadtree: &QuadTree) {
     // Add object
     if is_mouse_button_pressed(MouseButton::Right) {
+        let mut rng = thread_rng();
+
         let (mx, my) = mouse_position();
-        object_array.push(Rc::new(Boid::new(mx as i32, my as i32, 2.0)));
+        object_array.push(Rc::new(Boid::new(mx as i32, my as i32, rng.gen_range((0.0..6.0)) as f32)));
     }
 
     // Object Query
@@ -98,6 +102,7 @@ fn update(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject
     quadtree.clear();
     for object in object_array.iter() {
         quadtree.insert_object(Rc::clone(&object));
+        // object.borrow_mut();
     }
 
     // Perform query
