@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::cmp::{max, min};
 use std::f32::consts::PI;
 use std::fmt;
@@ -28,53 +29,59 @@ pub trait QuadObject: Display {
 
 // Boid
 pub struct Boid {
-    x: i32,
-    y: i32,
+    x: f32,
+    y: f32,
     facing: f32,
     velocity: f32,
 }
 
 impl Boid {
     pub fn new(x: i32, y: i32, facing: f32) -> Boid {
-        Boid { x, y, facing, velocity:1.0, }
+        Boid { x:(x as f32), y:(y as f32), facing, velocity:1.0, }
     }
 }
 
 impl QuadObject for Boid {
-    fn update(&mut self) {
-        let (vx, vy) = (self.x as f32 + self.facing.sin(), self.y as f32 + self.facing.cos());
-        self.x += vx as i32;
-        self.y += vy as i32;
-    }
-
     fn draw(&self) {
         let size: f32 = 4.0;
 
-        let on_circle = Vec2   { x:(self.x as f32 + ( self.facing.sin() * 2.0*size)),     y:(self.y as f32 + (self.facing.cos() * 2.0*size))};
-        let left_point = Vec2  { x:(self.x as f32 + ((self.facing + PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing + PI/2.0).cos() * size))};
-        let right_point = Vec2 { x:(self.x as f32 + ((self.facing - PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing - PI/2.0).cos() * size))};
+        let on_circle = Vec2   { x:(self.x + ( self.facing.sin() * 2.0*size)),     y:(self.y + (self.facing.cos() * 2.0*size))};
+        let left_point = Vec2  { x:(self.x + ((self.facing + PI/2.0).sin() *size)), y:(self.y + ((self.facing + PI/2.0).cos() * size))};
+        let right_point = Vec2 { x:(self.x + ((self.facing - PI/2.0).sin() *size)), y:(self.y + ((self.facing - PI/2.0).cos() * size))};
 
-        draw_line(self.x as f32, self.y as f32, on_circle.x, on_circle.y, 1.0, BLUE);
+        draw_line(self.x, self.y, on_circle.x, on_circle.y, 1.0, BLUE);
         draw_triangle_lines(on_circle, left_point, right_point, 1.5, DARKBLUE);
     }
 
     fn highlight(&self) {
         let size: f32 = 4.0;
 
-        let on_circle = Vec2   { x:(self.x as f32 + ( self.facing.sin() * 2.0*size)),     y:(self.y as f32 + (self.facing.cos() * 2.0*size))};
-        let left_point = Vec2  { x:(self.x as f32 + ((self.facing + PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing + PI/2.0).cos() * size))};
-        let right_point = Vec2 { x:(self.x as f32 + ((self.facing - PI/2.0).sin() *size)), y:(self.y as f32 + ((self.facing - PI/2.0).cos() * size))};
+        let on_circle = Vec2   { x:(self.x + ( self.facing.sin() * 2.0*size)),     y:(self.y + (self.facing.cos() * 2.0*size))};
+        let left_point = Vec2  { x:(self.x + ((self.facing + PI/2.0).sin() *size)), y:(self.y + ((self.facing + PI/2.0).cos() * size))};
+        let right_point = Vec2 { x:(self.x + ((self.facing - PI/2.0).sin() *size)), y:(self.y + ((self.facing - PI/2.0).cos() * size))};
 
         draw_triangle_lines(on_circle, left_point, right_point, 1.5, YELLOW);
     }
 
     fn center(&self) -> (i32, i32) {
-        (self.x, self.y)
+        (self.x as i32, self.y as i32)
     }
 
     fn is_overlap(&self, surface: &TreeSurface) -> bool {
         let (mx, my) = self.center();
         surface.x0 <= mx && mx <= surface.x1 && surface.y0 <= my && my <= surface.y1
+    }
+
+    fn update(&mut self) {
+        let (vx, vy) = (self.facing.sin(), self.facing.cos());
+        self.x += vx;
+        self.y += vy;
+
+        // Bounds checking
+        if self.x > 525.0 { self.x = 26.0; }
+        if self.x < 25.0 { self.x = 524.0; }
+        if self.y > 525.0 { self.y = 26.0; }
+        if self.y < 25.0 { self.y = 524.0; }
     }
 }
 
@@ -110,9 +117,9 @@ impl Rectangle {
         TreeSurface { x0:self.x0, y0:self.y0, x1:self.x1, y1:self.y1 }
     }
 
-    pub fn is_rect_overlap(&self, object: &Rc<dyn QuadObject>) -> bool {
+    pub fn is_rect_overlap(&self, object: &Rc<RefCell<dyn QuadObject>>) -> bool {
         let surface = self.to_tree_surface();
-        object.is_overlap(&surface)
+        object.as_ref().borrow().is_overlap(&surface)
     }
     pub fn get_wh(&self) -> (i32, i32) {
         (self.x1 - self.x0, self.y1 - self.y0)
@@ -134,8 +141,6 @@ impl Rectangle {
     }
 }
 impl QuadObject for Rectangle {
-    fn update(&mut self) {}
-
     fn draw(&self) {
         let (w, h) = self.get_wh();
         draw_rectangle_lines(self.x0 as f32, self.y0 as f32, w as f32, h as f32, 1.0, RED);
@@ -161,6 +166,8 @@ impl QuadObject for Rectangle {
             false
         }
     }
+
+    fn update(&mut self) {}
 }
 impl Display for Rectangle {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -179,8 +186,6 @@ impl Circle {
     }
 }
 impl QuadObject for Circle {
-    fn update(&mut self) {}
-
     fn draw(&self) {
         draw_circle_lines(self.x as f32, self.y as f32, self.radius as f32, 1.0, RED);
     }
@@ -200,6 +205,8 @@ impl QuadObject for Circle {
 
         (dx.pow(2) + dy.pow(2)) <= self.radius.pow(2)
     }
+
+    fn update(&mut self) {}
 }
 impl Display for Circle {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

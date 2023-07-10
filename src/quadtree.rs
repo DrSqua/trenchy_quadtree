@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use macroquad::color::{Color, DARKGRAY, WHITE};
@@ -14,12 +16,14 @@ const QUAD_LINES_COLOR: Color = WHITE;
 // --------------------
 // Object bounds to grid coordinates
 // --------------------
-fn assign_object_to_grid(surface: &TreeSurface, object: &Rc<dyn QuadObject>) -> Vec<i32> {
+fn assign_object_to_grid(surface: &TreeSurface, object: &Rc<RefCell<dyn QuadObject>>) -> Vec<i32> {
     // Define split points
     let (mx, my) = surface.mxy();
 
     // Result vec
     let mut result_vec = Vec::new();
+
+    let object = object.as_ref().borrow();
 
     if object.is_overlap(&TreeSurface::from_size(surface.x0, surface.y0, mx - 1, my - 1)) {
         result_vec.push(0) }
@@ -62,7 +66,7 @@ impl QuadTree {
         self.top_node = Box::new(TreeNode::new(1, self.surface.x0, self.surface.y0, self.surface.x1, self.surface.y1));
     }
 
-    pub fn insert_object(&mut self, object: Rc<dyn QuadObject>) {
+    pub fn insert_object(&mut self, object: Rc<RefCell<dyn QuadObject>>) {
         self.top_node.insert_object(Rc::clone(&object));
     }
 }
@@ -104,7 +108,7 @@ struct TreeNode {
     surface: TreeSurface,
 
     // Either objects or leaves have no items. We use Option<T> in that case
-    objects: Option<Vec<Rc<dyn QuadObject>>>, // Holds a maximum of MAX_OBJECTS_PER_NODE objects in each TreeNode
+    objects: Option<Vec<Rc<RefCell<dyn QuadObject>>>>, // Holds a maximum of MAX_OBJECTS_PER_NODE objects in each TreeNode
     leaves: [Option<Box<TreeNode>>; 4], // Children nodes, max 4
 }
 impl Display for TreeNode {
@@ -142,7 +146,7 @@ impl TreeNode {
         }
     }
 
-    pub fn insert_object(&mut self, object: Rc<dyn QuadObject>) {
+    pub fn insert_object(&mut self, object: Rc<RefCell<dyn QuadObject>>) {
         if self.objects.is_some() { // Check if objectvector is Some
 
             // First check if max object count has been reached
@@ -188,7 +192,7 @@ impl TreeNode {
     }
 
     // Internal
-    fn switch_object_to_leaves(&mut self, extra_object: Rc<dyn QuadObject>) {
+    fn switch_object_to_leaves(&mut self, extra_object: Rc<RefCell<dyn QuadObject>>) {
         // Populating leaves
         let (mx, my) = self.surface.mxy();
 
@@ -299,17 +303,17 @@ impl TreeNode {
 // Complex methods
 // ----------------------------------------
 impl QuadTree {
-    pub fn query_objects_in(&self, query_surface: &Rectangle) -> Vec<Rc<dyn QuadObject>> {
+    pub fn query_objects_in(&self, query_surface: &Rectangle) -> Vec<Rc<RefCell<dyn QuadObject>>> {
         self.top_node.query_surface(query_surface)
     }
 }
 impl TreeNode {
-    pub fn query_surface(&self, query_surface: &Rectangle) -> Vec<Rc<dyn QuadObject>> {
+    pub fn query_surface(&self, query_surface: &Rectangle) -> Vec<Rc<RefCell<dyn QuadObject>>> {
         let mut query_result = vec![];
 
         if !self.objects.is_none() { // Check if objectvector is not None
             for object in self.objects.as_ref().unwrap().iter() {
-                if query_surface.is_rect_overlap(object) { query_result.push(Rc::clone(object)) }
+                if query_surface.is_rect_overlap(object.borrow()) { query_result.push(Rc::clone(object)) }
             }
         } else {
             self.leaves.iter().map(|leaf| {
