@@ -24,11 +24,11 @@ fn assign_object_to_grid(surface: &TreeSurface, object: &Rc<dyn QuadObject>) -> 
 
     if object.is_overlap(&TreeSurface::from_size(surface.x0, surface.y0, mx - 1, my - 1)) {
         result_vec.push(0) }
-    if object.is_overlap(&TreeSurface::from_size(mx, surface.y0, surface.x1 - 1, my - 1)) {
+    if object.is_overlap(&TreeSurface::from_size(mx, surface.y0, surface.x1, my - 1)) {
         result_vec.push(1) }
-    if object.is_overlap(&TreeSurface::from_size(surface.x0, my, mx - 1, surface.y1 - 1)) {
+    if object.is_overlap(&TreeSurface::from_size(surface.x0, my, mx - 1, surface.y1)) {
         result_vec.push(2) }
-    if object.is_overlap(&TreeSurface::from_size(mx, my, surface.x1 - 1, surface.y1 - 1)) {
+    if object.is_overlap(&TreeSurface::from_size(mx, my, surface.x1, surface.y1)) {
         result_vec.push(3) }
 
     result_vec
@@ -58,9 +58,9 @@ impl QuadTree {
 
         QuadTree {
             top_left: Box::new(TreeNode::new(1,surface.x0, surface.y0, mx - 1, my - 1)),
-            top_right: Box::new(TreeNode::new(1, mx, surface.y0, surface.x1 - 1, my - 1)),
-            bottom_left: Box::new(TreeNode::new(1, surface.x0, my, mx - 1, surface.y1 - 1)),
-            bottom_right: Box::new(TreeNode::new(1, mx, my, surface.x1 - 1, surface.y1 - 1)),
+            top_right: Box::new(TreeNode::new(1, mx, surface.y0, surface.x1, my - 1)),
+            bottom_left: Box::new(TreeNode::new(1, surface.x0, my, mx - 1, surface.y1)),
+            bottom_right: Box::new(TreeNode::new(1, mx, my, surface.x1, surface.y1)),
             surface,
         }
     }
@@ -73,9 +73,9 @@ impl QuadTree {
 
         let (mx, my) = self.surface.mxy();
         self.top_left = Box::new(TreeNode::new(1, self.surface.x0, self.surface.y0, mx - 1, my - 1));
-        self.top_right = Box::new(TreeNode::new(1, mx, self.surface.y0, self.surface.x1 - 1, my - 1));
-        self.bottom_left = Box::new(TreeNode::new(1, self.surface.x0, my, mx - 1, self.surface.y1 - 1));
-        self.bottom_right = Box::new(TreeNode::new(1, mx, my, self.surface.x1 - 1, self.surface.y1 - 1));
+        self.top_right = Box::new(TreeNode::new(1, mx, self.surface.y0, self.surface.x1, my - 1));
+        self.bottom_left = Box::new(TreeNode::new(1, self.surface.x0, my, mx, self.surface.y1));
+        self.bottom_right = Box::new(TreeNode::new(1, mx, my, self.surface.x1, self.surface.y1));
     }
 
     pub fn insert_object(&mut self, object: Rc<dyn QuadObject>) {
@@ -201,8 +201,8 @@ impl TreeNode {
         // Populating leaves
         let (mx, my) = self.surface.mxy();
 
-        self.leaves[0] = Some(Box::new(TreeNode::new(self.depth + 1,self.surface.x0, self.surface.y0, mx - 1, my)));
-        self.leaves[1] = Some(Box::new(TreeNode::new(self.depth + 1,mx, self.surface.y0, self.surface.x1, my)));
+        self.leaves[0] = Some(Box::new(TreeNode::new(self.depth + 1,self.surface.x0, self.surface.y0, mx - 1, my - 1)));
+        self.leaves[1] = Some(Box::new(TreeNode::new(self.depth + 1,mx, self.surface.y0, self.surface.x1, my - 1)));
         self.leaves[2] = Some(Box::new(TreeNode::new(self.depth + 1,self.surface.x0, my, mx - 1, self.surface.y1)));
         self.leaves[3] = Some(Box::new(TreeNode::new(self.depth + 1,mx, my, self.surface.x1, self.surface.y1)));
 

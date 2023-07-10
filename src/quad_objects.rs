@@ -66,7 +66,7 @@ impl QuadObject for Boid {
 
     fn is_overlap(&self, surface: &TreeSurface) -> bool {
         let (mx, my) = self.center();
-        surface.x0 <= mx && mx < surface.x1 && surface.y0 <= my && my < surface.y1
+        surface.x0 <= mx && mx <= surface.x1 && surface.y0 <= my && my <= surface.y1
     }
 }
 

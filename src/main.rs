@@ -81,9 +81,6 @@ fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn Quad
 
         let mut rect = input_store.selected.as_mut().unwrap();
         rect.normalize();
-
-        let query = quadtree.query_objects_in(input_store.selected.as_ref().unwrap());
-        input_store.selected_objects = Some(query);
     }
     if is_mouse_button_pressed(MouseButton::Left) && !input_store.is_selection {
         input_store.is_selection = true;
@@ -97,11 +94,21 @@ fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn Quad
 // --------------------
 // Update
 // --------------------
-fn update(object_array: &mut Vec<Rc<dyn QuadObject>>, quadtree: &mut QuadTree) {
+fn update(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>, quadtree: &mut QuadTree) {
     quadtree.clear();
     for object in object_array.iter() {
         quadtree.insert_object(Rc::clone(&object));
     }
+
+    // Perform query
+    match &input_store.selected {
+        Some(rect) => {
+            let query = quadtree.query_objects_in(input_store.selected.as_ref().unwrap());
+            input_store.selected_objects = Some(query);
+        },
+        None => {},
+    }
+
 }
 
 // --------------------
@@ -111,7 +118,7 @@ fn draw(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>
     clear_background(BLACK);
 
     quadtree.draw();
-    for object in object_array {
+    for object in object_array.iter() {
         object.draw();
     }
 
@@ -134,6 +141,10 @@ fn draw(input_store: &mut InputStore, object_array: &mut Vec<Rc<dyn QuadObject>>
         }
         None => {}
     }
+    let mut info_str = String::from("Object vect: ");
+    let len = &object_array.len().to_string();
+    info_str.push_str(len);
+    draw_text(info_str.as_str(), 120.0, 10.0, 15.0, WHITE);
 }
 
 // --------------------
@@ -156,7 +167,7 @@ async fn main() {
         if is_key_down(KeyCode::Escape) { run_simulation = false }
 
         // Update
-        update(object_array, quadtree.borrow_mut());
+        update(input_control, object_array, quadtree.borrow_mut());
 
         // Draw
         draw(input_control, object_array, quadtree.borrow_mut());
