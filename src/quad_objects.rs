@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::{max, min};
 use std::f32::consts::PI;
@@ -16,11 +17,16 @@ use crate::quadtree::TreeSurface;
 // QuadObject Trait
 //
 pub trait QuadObject: Display {
+    fn get_id(&self) -> u32;
+
     fn draw(&self);
     fn highlight(&self);
     fn center(&self) -> (i32, i32);
     fn is_overlap(&self, surface: &TreeSurface) -> bool;
+
     fn update(&mut self);
+    fn update_movement(&mut self, rhs: &Rc<RefCell<dyn QuadObject>>);
+    fn get_boid(&self) -> Option<&Boid>;
 }
 
 // -
@@ -29,19 +35,29 @@ pub trait QuadObject: Display {
 
 // Boid
 pub struct Boid {
+    id: u32,
+
     x: f32,
     y: f32,
     facing: f32,
     velocity: f32,
+    red: bool,
 }
 
 impl Boid {
-    pub fn new(x: i32, y: i32, facing: f32) -> Boid {
-        Boid { x:(x as f32), y:(y as f32), facing, velocity:1.0, }
+    pub fn new(id: u32, x: i32, y: i32, facing: f32) -> Boid {
+        Boid { id:id, x:(x as f32), y:(y as f32), facing, velocity:1.0, red:false }
+    }
+    pub fn new_red(id: u32, x: i32, y: i32, facing: f32) -> Boid {
+        Boid { id:id, x:(x as f32), y:(y as f32), facing, velocity:1.0, red:true }
     }
 }
 
 impl QuadObject for Boid {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+
     fn draw(&self) {
         let size: f32 = 4.0;
 
@@ -49,8 +65,10 @@ impl QuadObject for Boid {
         let left_point = Vec2  { x:(self.x + ((self.facing + PI/2.0).sin() *size)), y:(self.y + ((self.facing + PI/2.0).cos() * size))};
         let right_point = Vec2 { x:(self.x + ((self.facing - PI/2.0).sin() *size)), y:(self.y + ((self.facing - PI/2.0).cos() * size))};
 
+        let color = if self.red { RED } else { DARKBLUE };
+
         draw_line(self.x, self.y, on_circle.x, on_circle.y, 1.0, BLUE);
-        draw_triangle_lines(on_circle, left_point, right_point, 1.5, DARKBLUE);
+        draw_triangle_lines(on_circle, left_point, right_point, 1.5, color);
     }
 
     fn highlight(&self) {
@@ -83,6 +101,20 @@ impl QuadObject for Boid {
         if self.y > 525.0 { self.y = 26.0; }
         if self.y < 25.0 { self.y = 524.0; }
     }
+
+    fn update_movement(&mut self, rhs: &Rc<RefCell<dyn QuadObject>>) {
+        let boid_option = rhs.as_ref().borrow();
+        match boid_option.get_boid() {
+            Some(boid) => {
+                self.facing += (boid.facing - self.facing) / 5.0;
+            },
+            None => {}
+        }
+    }
+
+    fn get_boid(&self) -> Option<&Boid> {
+        return Some(self)
+    }
 }
 
 impl Display for Boid {
@@ -93,13 +125,15 @@ impl Display for Boid {
 
 // Rectangle
 pub struct Rectangle {
+    id: u32,
+
     x0: i32,
     y0: i32,
     x1: i32,
     y1: i32,
 }
 impl Rectangle {
-    pub fn new(x: i32, y: i32, width: i32, height: i32) -> Rectangle {
+    pub fn new(id: u32, x: i32, y: i32, width: i32, height: i32) -> Rectangle {
 
         let mut x0 = x;
         let mut x1 = x + width;
@@ -111,7 +145,7 @@ impl Rectangle {
         if height < 0 {
             swap(&mut y0, &mut y1);
         }
-        Rectangle { x0, y0, x1, y1, }
+        Rectangle { id, x0, y0, x1, y1, }
     }
     pub fn to_tree_surface(&self) -> TreeSurface {
         TreeSurface { x0:self.x0, y0:self.y0, x1:self.x1, y1:self.y1 }
@@ -141,6 +175,10 @@ impl Rectangle {
     }
 }
 impl QuadObject for Rectangle {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+
     fn draw(&self) {
         let (w, h) = self.get_wh();
         draw_rectangle_lines(self.x0 as f32, self.y0 as f32, w as f32, h as f32, 1.0, RED);
@@ -168,6 +206,14 @@ impl QuadObject for Rectangle {
     }
 
     fn update(&mut self) {}
+
+    fn update_movement(&mut self, rhs: &Rc<RefCell<dyn QuadObject>>) {
+        return;
+    }
+
+    fn get_boid(&self) -> Option<&Boid> {
+        None
+    }
 }
 impl Display for Rectangle {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -176,16 +222,22 @@ impl Display for Rectangle {
 }
 // Circle
 pub struct Circle {
+    id: u32,
+
     x: i32,
     y: i32,
     radius: i32,
 }
 impl Circle {
-    pub fn new(x: i32, y: i32, r: i32) -> Circle {
-        Circle { x, y, radius:r }
+    pub fn new(id: u32, x: i32, y: i32, r: i32) -> Circle {
+        Circle { id, x, y, radius:r }
     }
 }
 impl QuadObject for Circle {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+
     fn draw(&self) {
         draw_circle_lines(self.x as f32, self.y as f32, self.radius as f32, 1.0, RED);
     }
@@ -207,6 +259,14 @@ impl QuadObject for Circle {
     }
 
     fn update(&mut self) {}
+
+    fn update_movement(&mut self, rhs: &Rc<RefCell<dyn QuadObject>>) {
+        return;
+    }
+
+    fn get_boid(&self) -> Option<&Boid> {
+        None
+    }
 }
 impl Display for Circle {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
