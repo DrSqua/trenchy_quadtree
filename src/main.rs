@@ -39,7 +39,7 @@ async fn main() {
 
     // Loop
     while run_simulation {
-        let mut time_struct = TimingStruct { start:Instant::now(), after_handle_input:Instant::now(), after_update:Instant::now(), after_draw:Instant::now() };
+        let mut time_struct = TimingStruct {start:Instant::now(), after_handle_input:Instant::now(), after_update:Instant::now(), after_draw:Instant::now(), after_object_update:Instant::now(), after_query_by_object:Instant::now(), after_quadtree:Instant::now() };
 
         // Handle_Input
         handle_input(input_control, object_array);
@@ -47,7 +47,7 @@ async fn main() {
         time_struct.after_handle_input = Instant::now();
 
         // Update
-        update(input_control, object_array, quadtree.borrow_mut());
+        update(time_struct.borrow_mut(), input_control, object_array, quadtree.borrow_mut());
         time_struct.after_update = Instant::now();
 
         // Draw

@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::{max, min};
 use std::f32::consts::PI;
@@ -207,7 +206,7 @@ impl QuadObject for Rectangle {
 
     fn update(&mut self) {}
 
-    fn update_movement(&mut self, rhs: &Rc<RefCell<dyn QuadObject>>) {
+    fn update_movement(&mut self, _rhs: &Rc<RefCell<dyn QuadObject>>) {
         return;
     }
 
@@ -260,7 +259,7 @@ impl QuadObject for Circle {
 
     fn update(&mut self) {}
 
-    fn update_movement(&mut self, rhs: &Rc<RefCell<dyn QuadObject>>) {
+    fn update_movement(&mut self, _rhs: &Rc<RefCell<dyn QuadObject>>) {
         return;
     }
 

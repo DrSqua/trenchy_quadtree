@@ -1,6 +1,6 @@
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Instant;
 use macroquad::input::{is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, MouseButton};
 use macroquad::prelude::{KeyCode};
 use macroquad::rand::ChooseRandom;
@@ -8,35 +8,36 @@ use macroquad::rand::ChooseRandom;
 use crate::quad_objects::{QuadObject, Rectangle, Circle, Boid};
 use crate::quadtree::QuadTree;
 use rand::{Rng, thread_rng};
+use crate::TimingStruct;
 
 pub fn setup_shapes() -> Vec<Rc<RefCell<dyn QuadObject>>> {
     let mut input_vec: Vec<Rc<RefCell<dyn QuadObject>>> = vec![];
 
     // Red one :o
-    input_vec.push(Rc::new(RefCell::new(Boid::new_red((input_vec.len() as u32),200, 200, 2.0))));
+    input_vec.push(Rc::new(RefCell::new(Boid::new_red(input_vec.len() as u32,200, 200, 2.0))));
 
 
     // First
-    input_vec.push(Rc::new(RefCell::new(Rectangle::new((input_vec.len() as u32),10, 10, 50, 50))));
+    input_vec.push(Rc::new(RefCell::new(Rectangle::new(input_vec.len() as u32,10, 10, 50, 50))));
     // Second
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),320, 100, 20))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,320, 100, 20))));
     // Third
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),120, 300, 20))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,120, 300, 20))));
     // Fourth
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),300, 300, 10))));
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),320, 300, 20))));
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),200, 200, 40))));
-    input_vec.push(Rc::new(RefCell::new(Rectangle::new((input_vec.len() as u32),390, 390, 20, 20))));
-    input_vec.push(Rc::new(RefCell::new(Rectangle::new((input_vec.len() as u32),450, 450, 40, 40))));
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),300, 300, 3))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,300, 300, 10))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,320, 300, 20))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,200, 200, 40))));
+    input_vec.push(Rc::new(RefCell::new(Rectangle::new(input_vec.len() as u32,390, 390, 20, 20))));
+    input_vec.push(Rc::new(RefCell::new(Rectangle::new(input_vec.len() as u32,450, 450, 40, 40))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,300, 300, 3))));
     // Bottom cluster
-    input_vec.push(Rc::new(RefCell::new(Circle::new((input_vec.len() as u32),300, 400, 10))));
+    input_vec.push(Rc::new(RefCell::new(Circle::new(input_vec.len() as u32,300, 400, 10))));
 
     // Boids
     let nums: Vec<i32> = (1..40).collect();
     let pos_iter = nums.iter().zip( nums.iter().rev() );
     for (x, y) in pos_iter {
-        input_vec.push(Rc::new(RefCell::new(Boid::new((input_vec.len() as u32),*x * 10 + 100, *y * 10 + 100, 0.0))));
+        input_vec.push(Rc::new(RefCell::new(Boid::new(input_vec.len() as u32,*x * 10 + 100, *y * 10 + 100, 0.0))));
     }
 
     // Return
@@ -65,7 +66,7 @@ pub fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<RefC
         let mut rng = thread_rng();
 
         let (mx, my) = mouse_position();
-        object_array.push(Rc::new(RefCell::new(Boid::new((object_array.len() as u32),mx as i32, my as i32, rng.gen_range(0.0..6.0) as f32))));
+        object_array.push(Rc::new(RefCell::new(Boid::new(object_array.len() as u32,mx as i32, my as i32, rng.gen_range(0.0..6.0) as f32))));
     }
     // Add 100
     if is_key_pressed(KeyCode::Up) {
@@ -74,7 +75,7 @@ pub fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<RefC
         nums.shuffle();
         let pos_iter = nums.iter().zip( nums.iter().rev() );
         for (x, y) in pos_iter {
-            object_array.push(Rc::new(RefCell::new(Boid::new((object_array.len() as u32),*x * 10 + 100, *y * 10 + 100, rng.gen_range(0.0..6.0) as f32))));
+            object_array.push(Rc::new(RefCell::new(Boid::new(object_array.len() as u32,*x * 10 + 100, *y * 10 + 100, rng.gen_range(0.0..6.0) as f32))));
         }
     }
     if is_key_pressed(KeyCode::Down) {
@@ -102,20 +103,21 @@ pub fn handle_input(input_store: &mut InputStore, object_array: &mut Vec<Rc<RefC
         let (x, y)  = mouse_position();
         let x = x as i32;
         let y = y as i32;
-        input_store.selected = Some(Rectangle::new((object_array.len() as u32), x, y, 0, 0));
+        input_store.selected = Some(Rectangle::new(object_array.len() as u32, x, y, 0, 0));
     }
 }
 
 // --------------------
 // Update
 // --------------------
-pub fn update(input_store: &mut InputStore, object_array: &mut Vec<Rc<RefCell<dyn QuadObject>>>, quadtree: &mut QuadTree) {
+pub fn update(timing_struct: &mut TimingStruct, input_store: &mut InputStore, object_array: &mut Vec<Rc<RefCell<dyn QuadObject>>>, quadtree: &mut QuadTree) {
     // Setup quadtree
     quadtree.clear();
     for object in object_array.iter() {
         quadtree.insert_object(Rc::clone(object));
         object.as_ref().borrow_mut().update();
     }
+    timing_struct.after_quadtree = Instant::now();
     // Operation
     for object in object_array.iter() {
         let query = quadtree.query_neighbours_and_condition(&object.clone(), Some(10));
@@ -123,7 +125,7 @@ pub fn update(input_store: &mut InputStore, object_array: &mut Vec<Rc<RefCell<dy
             query_object.as_ref().borrow_mut().update_movement(object);
         }
     }
-
+    timing_struct.after_query_by_object = Instant::now();
 
     // Perform query
     match &input_store.selected {

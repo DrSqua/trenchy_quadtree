@@ -10,6 +10,9 @@ use crate::{InputStore, QuadObject, QuadTree};
 pub struct TimingStruct {
     pub(crate) start: Instant,
     pub(crate) after_handle_input: Instant,
+    pub(crate) after_quadtree: Instant,
+    pub(crate) after_query_by_object: Instant,
+    pub(crate) after_object_update: Instant,
     pub(crate) after_update: Instant,
     pub(crate) after_draw: Instant,
 }
@@ -36,9 +39,19 @@ pub fn draw_performance(time_struct: &TimingStruct, quadtree: &QuadTree) {
     draw_text(info_str.as_str(), draw_x, 320.0, 15.0, WHITE);
 
     info_str.clear();
+    info_str.push_str("  Quadtree: ");
+    info_str.push_str(&(time_struct.after_quadtree - time_struct.after_handle_input).as_micros().to_string());
+    draw_text(info_str.as_str(), draw_x, 340.0, 15.0, WHITE);
+
+    info_str.clear();
+    info_str.push_str("  Objectquery: ");
+    info_str.push_str(&(time_struct.after_query_by_object - time_struct.after_quadtree).as_micros().to_string());
+    draw_text(info_str.as_str(), draw_x, 360.0, 15.0, WHITE);
+
+    info_str.clear();
     info_str.push_str("Draw: ");
     info_str.push_str(&(time_struct.after_draw - time_struct.after_update).as_micros().to_string());
-    draw_text(info_str.as_str(), draw_x, 340.0, 15.0, WHITE);
+    draw_text(info_str.as_str(), draw_x, 380.0, 15.0, WHITE);
 }
 
 // --------------------
